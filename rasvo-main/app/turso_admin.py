@@ -14,6 +14,7 @@ async def list_students(
     search: str | None = Query(None),
     missed_last_session: bool = Query(False),
     sort: str | None = Query(None),
+    oldest_first: bool = Query(False),
     _admin: models.User = Depends(require_admin),
 ):
     """
@@ -25,6 +26,8 @@ async def list_students(
       qatnashmagan o'quvchilarni qaytaradi
     - sort=homework_missed_desc: testlarni (oddiy + A+) umuman ishlamaganlar
       birinchi, keyin eng kam ishlaganlar; teng bo'lsa yangi ro'yxatdan o'tgani oldin.
+      oldest_first=true: ro'yxatdan o'tish bo'yicha teskari tartib (eskilari birinchi,
+      sort bilan birga ishlatilsa, teng natijalar ichida ham shu tartib saqlanadi).
       Har bir o'quvchi uchun `tests_done` (ishlangan testlar soni) ham qaytadi.
     """
     try:
@@ -55,9 +58,10 @@ async def list_students(
 
         # Ishlangan testlar soni: har bir jadval bitta GROUP BY orqali hisoblanadi
         # (har o'quvchi uchun alohida so'rov emas) - panel tez ishlashi uchun.
-        order_sql = "u.registered_at DESC"
+        reg_order = "u.registered_at ASC" if oldest_first else "u.registered_at DESC"
+        order_sql = reg_order
         if sort == "homework_missed_desc":
-            order_sql = "tests_done ASC, u.registered_at DESC"
+            order_sql = f"tests_done ASC, {reg_order}"
 
         items = await query_turso(
             "SELECT u.telegram_id, u.full_name, u.course, u.region, u.district, u.phone, "
